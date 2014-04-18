@@ -14,11 +14,15 @@ Configure the windows firewall to allow Erlang/Elixir traffic to pass through
         " advfirewall firewall " <> command_argument
     end
 
+    @doc "build the whole netsh command"
+    defp build_netsh_command(subcommand) do
+        path_to_netsh <> get_correctly_formed_netsh_command(subcommand)
+    end        
+
     @doc "simply check if there is already an existing rule"
     defp firewall_rule_already_exists?(rulename) do
         test_for_rule_args = "show rule " <> rulename
-        test_for_rule_cmd = path_to_netsh <> get_correctly_formed_netsh_command(test_for_rule_args)
-        result = cmd(test_for_rule_cmd)
+        result = cmd(build_netsh_command(test_for_rule_args))
         #Easier to look for the absence of a rule and negate it
         not Regex.match?(~r/No rules match/i,result)
     end
@@ -27,9 +31,7 @@ Configure the windows firewall to allow Erlang/Elixir traffic to pass through
     def create_win_firewall_rule(rulename, executable) do
         if not firewall_rule_already_exists?(rulename) do
             add_rule_cmd = "add rule name=" <> rulename <> " dir=out action=allow program=" <> executable <> " profile=domain"
-            full_add_rule_cmd = path_to_netsh <> get_correctly_formed_netsh_command(add_rule_cmd)
-            result = cmd(full_add_rule_cmd)
+            result = cmd(build_netsh_command(add_rule_cmd))
         end
     end
-
 end    
