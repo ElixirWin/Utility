@@ -38,19 +38,26 @@ defmodule FirewallUtility do
   end
 
   def process({rulename, executable}) do
-    create_win_firewall_rule(rulename, executable)
+    create_win_out_firewall_rule(rulename, executable)
+    create_win_in_firewall_rule(rulename, executable)
   end
 
   @doc """
   If there is not already a rule to pass through erlang traffic then create this rule
   """
-  def create_win_firewall_rule(rulename, executable) do
+  def create_win_out_firewall_rule(rulename, executable) do
     unless firewall_rule_already_exists?(rulename) do
       add_rule_cmd = "add rule name=#{rulename} dir=out action=allow program=#{executable} profile=domain"
       add_rule_cmd |> build_netsh_command |> cmd
     end
   end
 
+  def create_win_in_firewall_rule(rulename, executable) do
+    unless firewall_rule_already_exists?(rulename) do
+      add_rule_cmd = "add rule name=#{rulename} dir=in action=allow program=#{executable} profile=domain"
+      add_rule_cmd |> build_netsh_command |> cmd
+    end
+  end
   defp path_to_netsh do 
     "#{get_env("SystemRoot")}/system32/netsh.exe"
   end
@@ -67,6 +74,6 @@ defmodule FirewallUtility do
     test_for_rule_args = "show rule #{rulename} "
     result = test_for_rule_args |> build_netsh_command |> cmd
     # Easier to look for the absence of a rule and negate it
-    not Regex.match?(~r/No rules match/i, result)
+    not (Regex.match?(~r/No rules match/i, result))
   end
 end
