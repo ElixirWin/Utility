@@ -1,6 +1,5 @@
-.eunit
-deps
-*.o
-*.beam
-*.plt
+/deps
 erl_crash.dump
+/_build
+*.ez
+/firewall_utility
