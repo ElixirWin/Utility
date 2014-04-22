@@ -23,8 +23,8 @@ defmodule FirewallUtility do
     case parse do
       {[help: true], _, _} ->
         :help
-      {_, [rulename, executable], _} ->
-        {rulename, executable}
+      {_, [rulename, direction, executable], _} ->
+        {rulename, direction, executable}
       _ ->
         :help
     end
@@ -32,32 +32,28 @@ defmodule FirewallUtility do
 
   def process(:help) do
     IO.puts """
-    usage: firewall_utility <rulename> <executable>
+    usage: firewall_utility <rulename> <direction> <executable>
+    rulename is short name for rule (e. g. "erl")
+    direction is [in|out]
+    executable is the full path to the executable (e. g. \\progra~1\\erl6.0\\bin\\erl.exe)
     """
     System.halt(0)
   end
 
-  def process({rulename, executable}) do
-    create_win_out_firewall_rule(rulename, executable)
-    create_win_in_firewall_rule(rulename, executable)
+  def process({rulename, direction, executable}) do
+    create_win_firewall_rule(rulename, direction, executable)
   end
 
   @doc """
-  If there is not already a rule to pass through erlang traffic then create this rule
+  If there is not already a rule to pass through traffic then create this rule
   """
-  def create_win_out_firewall_rule(rulename, executable) do
-    unless firewall_rule_already_exists?(rulename) do
-      add_rule_cmd = "add rule name=#{rulename} dir=out action=allow program=#{executable} profile=domain"
+  def create_win_firewall_rule(rulename, direction, executable) do
+    unless firewall_rule_already_exists?(rulename, direction) do
+      add_rule_cmd = "add rule name=#{rulename} dir=#{direction} action=allow program=#{executable} profile=domain"
       add_rule_cmd |> build_netsh_command |> cmd
     end
   end
 
-  def create_win_in_firewall_rule(rulename, executable) do
-    unless firewall_rule_already_exists?(rulename) do
-      add_rule_cmd = "add rule name=#{rulename} dir=in action=allow program=#{executable} profile=domain"
-      add_rule_cmd |> build_netsh_command |> cmd
-    end
-  end
   defp path_to_netsh do 
     "#{get_env("SystemRoot")}/system32/netsh.exe"
   end
@@ -70,10 +66,13 @@ defmodule FirewallUtility do
     path_to_netsh <> get_correctly_formed_netsh_command(subcommand)
   end        
 
-  defp firewall_rule_already_exists?(rulename) do
+  defp firewall_rule_already_exists?(rulename, direction) do
     test_for_rule_args = "show rule #{rulename} "
     result = test_for_rule_args |> build_netsh_command |> cmd
-    # Easier to look for the absence of a rule and negate it
-    not (Regex.match?(~r/No rules match/i, result))
+    if not (Regex.match?(~r/No rules match/i, result)) do
+      Regex.match?(~r/Direction:\s*"#{direction}"/i,result) 
+    else
+      false
+    end
   end
 end
